@@ -1,0 +1,605 @@
+/*********************************************************************
+This is a library for our Monochrome OLEDs based on SSD1306 drivers
+
+  Pick one up today in the adafruit shop!
+  ------> http://www.adafruit.com/category/63_98
+
+Adafruit invests time and resources providing this open source code, 
+please support Adafruit and open-source hardware by purchasing 
+products from Adafruit!
+
+Written by Limor Fried/Ladyada  for Adafruit Industries.  
+BSD license, check license.txt for more information
+All text above, and the splash screen below must be included in any redistribution
+*********************************************************************/
+
+#include <avr/pgmspace.h>
+#ifndef __SAM3X8E__
+ #include <util/delay.h>
+#endif
+#include <stdlib.h>
+
+#include <Wire.h>
+
+#include "Adafruit_GFX.h"
+#include "wwEyes.h"
+#include "wwFrankPin.h"
+#include "SPI.h"
+#include "SD.h"
+	 
+// the memory buffer for the LCD
+
+static uint8_t buffer[SSD1306_LCDHEIGHT * SSD1306_LCDWIDTH / 8] = { 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
+0xC0, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
+0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0x00, 0x00, 0x00, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
+0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0xC0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0xBF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xE0, 0xE0, 0xE0, 0xE0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0xE0, 0xE0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBF, 0x9F, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0xC0, 0xF0, 0xFE, 0xFF, 0xFF, 0x7F, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xFE, 0xFF,
+0xFF, 0xFF, 0x0F, 0x07, 0x07, 0x03, 0x03, 0xC3, 0xE3, 0xE3, 0xC3, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x83, 0xE3, 0xE3, 0xE3, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0x03, 0xE3, 0xE3, 0xE3, 0x83, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0xC3, 0xE3, 0xE3, 0xE3, 0x03, 0x03, 0x07, 0x0F, 0x3F, 0xFF, 0xFF, 0xFE, 0xF8, 0xC0, 0x00,
+0x80, 0xF0, 0xFE, 0xFF, 0xFF, 0x7F, 0x0F, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF0, 0xF0, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xF8, 0x00, 0x00, 0x00, 0x80,
+0xC0, 0xC0, 0x80, 0x00, 0x00, 0xC0, 0xFF, 0xFF, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xFF, 0xE0, 0x00, 0x00, 0x80, 0xC0, 0xC0, 0x80, 0x00, 0x00, 0x00,
+0xF0, 0xFF, 0xFF, 0xFF, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+0xFF, 0xFF, 0x7F, 0x0F, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x07, 0x0F, 0x0F, 0x0F, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x7F, 0xFF, 0xFF, 0xFE, 0xFC, 0xFF, 0x7F,
+0x1F, 0x3F, 0xFF, 0xFE, 0xF8, 0xFF, 0xFF, 0xFF, 0x07, 0x00, 0x00, 0x04, 0x0E, 0x0E, 0x0E, 0x0E,
+0x0E, 0x00, 0x00, 0x07, 0xFF, 0xFF, 0xFF, 0xF8, 0xFC, 0xFF, 0x3F, 0x1F, 0x7F, 0xFF, 0xFC, 0xFC,
+0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFE, 0xF0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x7F, 0xFF,
+0xFF, 0xFF, 0xE0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC7, 0xC7, 0xC7, 0xC7, 0xC1, 0xC0,
+0xC0, 0xC0, 0xC0, 0xC3, 0xC7, 0xCF, 0xC7, 0xC3, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
+0xC0, 0xC0, 0xC0, 0xC0, 0xC1, 0xC7, 0xCF, 0xC7, 0xC3, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC3, 0xC7,
+0xC7, 0xC7, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xE0, 0xF8, 0xFF, 0xFF, 0x7F, 0x1F, 0x03, 0x00,
+0x03, 0x0F, 0x7F, 0xFF, 0xFF, 0xFC, 0xF0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0x07, 0x07, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x07, 0x07, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF9, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x03, 0x1F, 0x7F, 0xFF, 0xFF, 0xFC, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0x00, 0x00, 0x00, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x00, 0x00, 0x00, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+// the most basic function, set a single pixel
+void wwEyes::drawPixel(int16_t x, int16_t y, uint16_t color) {
+  if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
+    return;
+
+  // check rotation, move pixel around if necessary
+  switch (getRotation()) {
+  case 1:
+    swap(x, y);
+    x = WIDTH - x - 1;
+    break;
+  case 2:
+    x = WIDTH - x - 1;
+    y = HEIGHT - y - 1;
+    break;
+  case 3:
+    swap(x, y);
+    y = HEIGHT - y - 1;
+    break;
+  }  
+
+  // x is which column
+    switch (color) 
+    {
+      case WHITE:   buffer[x+ (y/8)*SSD1306_LCDWIDTH] |=  (1 << (y&7)); break;
+      case BLACK:   buffer[x+ (y/8)*SSD1306_LCDWIDTH] &= ~(1 << (y&7)); break; 
+      case INVERSE: buffer[x+ (y/8)*SSD1306_LCDWIDTH] ^=  (1 << (y&7)); break; 
+    }
+    
+}
+
+// initializer for I2C - we only indicate the reset pin!
+wwEyes::wwEyes() :
+Adafruit_GFX(SSD1306_LCDWIDTH, SSD1306_LCDHEIGHT) {
+}
+
+void wwEyes::select(uint8_t i2caddr){
+eyeAddress = i2caddr; // added by Rainer for Wood-Walker, 2015/04/05
+}
+
+uint8_t wwEyes::sd2Eye(const char *filename) {
+
+File myFile;
+uint16_t i = 0;
+byte lastread;
+int x=0;
+char c; 
+ 
+  // open the file for reading:
+  myFile = SD.open(filename);
+  if (myFile) {
+     // skip the first 5 line
+     for(i=0;i<5;i++){  
+			while(myFile.read() != '\n') {   // Looking for a CR LF
+        }
+      }
+      i = 0;
+  
+     //SerialUSB.println(filename);
+     // read from the file until there's nothing else in it:
+      while (myFile.available()) {
+		   if (myFile.read() == 'x') {
+            c = myFile.read();            // first digit = * 16
+			   if (c >= '0' && c <= '9') {
+		 		    x = (c - '0')*16;
+	  		   }
+			   else if (c >= 'A' && c <= 'F') {
+		 		    x = ((c - 'A') + 10)*16;
+		 	   }	
+            c = myFile.read();            // second digit
+			   if (c >= '0' && c <= '9') {
+				   x += c - '0';
+			   }
+			   else if (c >= 'A' && c <= 'F') {
+			    	x += (c - 'A') + 10;
+			   }	
+		      //SerialUSB.print(x);
+            //SerialUSB.write("-");
+            buffer[i] = x;
+            i++;
+			   if( i > 1024) { // write a maximum of 1024 byte into the array!
+			      break;
+			   }
+		  }
+      }
+      // close the file:
+      myFile.close();
+   } 
+   else {
+     // if the file didn't open, print an error:
+     SerialUSB.println("error opening test.txt");
+   }
+   // SerialUSB.println(i);  
+}
+
+void wwEyes::begin(void) {  // changed by Rainer for Wood-Walker, 2015/04/18
+
+    // I2C Init
+    Wire.begin();
+#ifdef __SAM3X8E__
+    // Force 400 KHz I2C, rawr! (Uses pins 20, 21 for SDA, SCL)
+    TWI1->TWI_CWGR = 0;
+    TWI1->TWI_CWGR = ((VARIANT_MCK / (2 * 400000)) - 4) * 0x101;
+#endif
+
+    // Init sequence for 128x64 OLED module
+    command(EYE_OFF);                               // 0xAE
+    command(SSD1306_SETDISPLAYCLOCKDIV);            // 0xD5
+    command(0x80);                                  // the suggested ratio 0x80
+    command(SSD1306_SETMULTIPLEX);                  // 0xA8
+    command(0x3F);
+    command(SSD1306_SETDISPLAYOFFSET);              // 0xD3
+    command(0x0);                                   // no offset
+    command(SSD1306_SETSTARTLINE | 0x0);            // line #0
+    command(SSD1306_CHARGEPUMP);                    // 0x8D
+    command(0x14); 
+    command(SSD1306_MEMORYMODE);                    // 0x20
+    command(0x00);                                  // 0x0 act like ks0108
+    command(SSD1306_SEGREMAP | 0x1);
+    command(SSD1306_COMSCANDEC);
+    command(SSD1306_SETCOMPINS);                    // 0xDA
+    command(0x12);
+    command(SSD1306_SETCONTRAST);                   // 0x81
+    command(0xCF); 
+    command(SSD1306_SETPRECHARGE);                  // 0xd9
+    command(0xF1);
+    command(SSD1306_SETVCOMDETECT);                 // 0xDB
+    command(0x40);
+    command(SSD1306_DISPLAYALLON_RESUME);           // 0xA4
+    command(EYE_NORMALDISPLAY);                     // 0xA6
+    command(EYE_DEACTIVATE_SCROLL);                 //
+
+  command(EYE_ON);                     //--turn on oled panel
+}
+
+
+void wwEyes::invertDisplay(uint8_t i) {
+  if (i) {
+    command(EYE_INVERTDISPLAY);
+  } else {
+    command(EYE_NORMALDISPLAY);
+  }
+}
+
+void wwEyes::command(uint8_t c) { 
+    // I2C
+    uint8_t control = 0x00;   // Co = 0, D/C = 0
+    Wire.beginTransmission(eyeAddress); // changed by Rainer for Wood-Walker, 2015/04/04
+    WIRE_WRITE(control);
+    WIRE_WRITE(c);
+    Wire.endTransmission();
+}
+
+// startscrollright
+// Activate a right handed scroll for rows start through stop
+// Hint, the display is 16 rows tall. To scroll the whole display, run:
+// display.scrollright(0x00, 0x0F) 
+void wwEyes::startscrollright(uint8_t start, uint8_t stop){
+  command(EYE_RIGHT_HORIZONTAL_SCROLL);
+  command(0X00);
+  command(start);
+  command(0X00);
+  command(stop);
+  command(0X00);
+  command(0XFF);
+  command(EYE_ACTIVATE_SCROLL);
+}
+
+// startscrollleft
+// Activate a right handed scroll for rows start through stop
+// Hint, the display is 16 rows tall. To scroll the whole display, run:
+// display.scrollright(0x00, 0x0F) 
+void wwEyes::startscrollleft(uint8_t start, uint8_t stop){
+  command(EYE_LEFT_HORIZONTAL_SCROLL);
+  command(0X00);
+  command(start);
+  command(0X00);
+  command(stop);
+  command(0X00);
+  command(0XFF);
+  command(EYE_ACTIVATE_SCROLL);
+}
+
+// startscrolldiagright
+// Activate a diagonal scroll for rows start through stop
+// Hint, the display is 16 rows tall. To scroll the whole display, run:
+// display.scrollright(0x00, 0x0F) 
+void wwEyes::startscrolldiagright(uint8_t start, uint8_t stop){
+  command(EYE_SET_VERTICAL_SCROLL_AREA);  
+  command(0X00);
+  command(SSD1306_LCDHEIGHT);
+  command(EYE_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL);
+  command(0X00);
+  command(start);
+  command(0X00);
+  command(stop);
+  command(0X01);
+  command(EYE_ACTIVATE_SCROLL);
+}
+
+// startscrolldiagleft
+// Activate a diagonal scroll for rows start through stop
+// Hint, the display is 16 rows tall. To scroll the whole display, run:
+// display.scrollright(0x00, 0x0F) 
+void wwEyes::startscrolldiagleft(uint8_t start, uint8_t stop){
+  command(EYE_SET_VERTICAL_SCROLL_AREA);  
+  command(0X00);
+  command(SSD1306_LCDHEIGHT);
+  command(EYE_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL);
+  command(0X00);
+  command(start);
+  command(0X00);
+  command(stop);
+  command(0X01);
+  command(EYE_ACTIVATE_SCROLL);
+}
+
+void wwEyes::stopscroll(void){
+  command(EYE_DEACTIVATE_SCROLL);
+}
+
+// Dim the display
+// dim = true: display is dimmed
+// dim = false: display is normal
+void wwEyes::dim(boolean dim) {
+  uint8_t contrast;
+
+  if (dim) {
+    contrast = 0; // Dimmed display
+  } else {
+    if (_vccstate == SSD1306_EXTERNALVCC) {
+      contrast = 0x9F;
+    } else {
+      contrast = 0xCF;
+    }
+  }
+  // the range of contrast to too small to be really useful
+  // it is useful to dim the display
+  command(SSD1306_SETCONTRAST);
+  command(contrast);
+}
+
+void wwEyes::ssd1306_data(uint8_t c) {
+    // I2C
+    uint8_t control = 0x40;   // Co = 0, D/C = 1
+    Wire.beginTransmission(eyeAddress); // changed by Rainer for Wood-Walker, 2015/04/04
+    WIRE_WRITE(control);
+    WIRE_WRITE(c);
+    Wire.endTransmission();
+}
+
+void wwEyes::display(void) {
+  command(SSD1306_COLUMNADDR);
+  command(0);   // Column start address (0 = reset)
+  command(SSD1306_LCDWIDTH-1); // Column end address (127 = reset)
+
+  command(SSD1306_PAGEADDR);
+  command(0); // Page start address (0 = reset)
+  command(7); // Page end address
+  
+    // save I2C bitrate
+#ifndef __SAM3X8E__
+    uint8_t twbrbackup = TWBR;
+    TWBR = 12; // upgrade to 400KHz!
+#endif
+
+    //Serial.println(TWBR, DEC);
+    //Serial.println(TWSR & 0x3, DEC);
+
+    // I2C
+    for (uint16_t i=0; i<(SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8); i++) {
+      // send a bunch of data in one xmission
+      Wire.beginTransmission(eyeAddress); // changed by Rainer for Wood-Walker, 2015/04/04
+      WIRE_WRITE(0x40);
+      for (uint8_t x=0; x<16; x++) {
+  WIRE_WRITE(buffer[i]);
+  i++;
+      }
+      i--;
+      Wire.endTransmission();
+    }
+#ifndef __SAM3X8E__
+    TWBR = twbrbackup;
+#endif
+}
+
+// clear everything
+void wwEyes::clearBuffer(void) {
+  memset(buffer, 0, (SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8));
+}
+
+void wwEyes::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
+  boolean bSwap = false;
+  switch(rotation) { 
+    case 0:
+      // 0 degree rotation, do nothing
+      break;
+    case 1:
+      // 90 degree rotation, swap x & y for rotation, then invert x
+      bSwap = true;
+      swap(x, y);
+      x = WIDTH - x - 1;
+      break;
+    case 2:
+      // 180 degree rotation, invert x and y - then shift y around for height.
+      x = WIDTH - x - 1;
+      y = HEIGHT - y - 1;
+      x -= (w-1);
+      break;
+    case 3:
+      // 270 degree rotation, swap x & y for rotation, then invert y  and adjust y for w (not to become h)
+      bSwap = true;
+      swap(x, y);
+      y = HEIGHT - y - 1;
+      y -= (w-1);
+      break;
+  }
+
+  if(bSwap) { 
+    drawFastVLineInternal(x, y, w, color);
+  } else { 
+    drawFastHLineInternal(x, y, w, color);
+  }
+}
+
+void wwEyes::drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color) {
+  // Do bounds/limit checks
+  if(y < 0 || y >= HEIGHT) { return; }
+
+  // make sure we don't try to draw below 0
+  if(x < 0) { 
+    w += x;
+    x = 0;
+  }
+
+  // make sure we don't go off the edge of the display
+  if( (x + w) > WIDTH) { 
+    w = (WIDTH - x);
+  }
+
+  // if our width is now negative, punt
+  if(w <= 0) { return; }
+
+  // set up the pointer for  movement through the buffer
+  register uint8_t *pBuf = buffer;
+  // adjust the buffer pointer for the current row
+  pBuf += ((y/8) * SSD1306_LCDWIDTH);
+  // and offset x columns in
+  pBuf += x;
+
+  register uint8_t mask = 1 << (y&7);
+
+  switch (color) 
+  {
+  case WHITE:         while(w--) { *pBuf++ |= mask; }; break;
+    case BLACK: mask = ~mask;   while(w--) { *pBuf++ &= mask; }; break;
+  case INVERSE:         while(w--) { *pBuf++ ^= mask; }; break;
+  }
+}
+
+void wwEyes::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
+  bool bSwap = false;
+  switch(rotation) { 
+    case 0:
+      break;
+    case 1:
+      // 90 degree rotation, swap x & y for rotation, then invert x and adjust x for h (now to become w)
+      bSwap = true;
+      swap(x, y);
+      x = WIDTH - x - 1;
+      x -= (h-1);
+      break;
+    case 2:
+      // 180 degree rotation, invert x and y - then shift y around for height.
+      x = WIDTH - x - 1;
+      y = HEIGHT - y - 1;
+      y -= (h-1);
+      break;
+    case 3:
+      // 270 degree rotation, swap x & y for rotation, then invert y 
+      bSwap = true;
+      swap(x, y);
+      y = HEIGHT - y - 1;
+      break;
+  }
+
+  if(bSwap) { 
+    drawFastHLineInternal(x, y, h, color);
+  } else {
+    drawFastVLineInternal(x, y, h, color);
+  }
+}
+
+
+void wwEyes::drawFastVLineInternal(int16_t x, int16_t __y, int16_t __h, uint16_t color) {
+
+  // do nothing if we're off the left or right side of the screen
+  if(x < 0 || x >= WIDTH) { return; }
+
+  // make sure we don't try to draw below 0
+  if(__y < 0) { 
+    // __y is negative, this will subtract enough from __h to account for __y being 0
+    __h += __y;
+    __y = 0;
+
+  } 
+
+  // make sure we don't go past the height of the display
+  if( (__y + __h) > HEIGHT) { 
+    __h = (HEIGHT - __y);
+  }
+
+  // if our height is now negative, punt 
+  if(__h <= 0) { 
+    return;
+  }
+
+  // this display doesn't need ints for coordinates, use local byte registers for faster juggling
+  register uint8_t y = __y;
+  register uint8_t h = __h;
+
+
+  // set up the pointer for fast movement through the buffer
+  register uint8_t *pBuf = buffer;
+  // adjust the buffer pointer for the current row
+  pBuf += ((y/8) * SSD1306_LCDWIDTH);
+  // and offset x columns in
+  pBuf += x;
+
+  // do the first partial byte, if necessary - this requires some masking
+  register uint8_t mod = (y&7);
+  if(mod) {
+    // mask off the high n bits we want to set 
+    mod = 8-mod;
+
+    // note - lookup table results in a nearly 10% performance improvement in fill* functions
+    // register uint8_t mask = ~(0xFF >> (mod));
+    static uint8_t premask[8] = {0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE };
+    register uint8_t mask = premask[mod];
+
+    // adjust the mask if we're not going to reach the end of this byte
+    if( h < mod) { 
+      mask &= (0XFF >> (mod-h));
+    }
+
+  switch (color) 
+    {
+    case WHITE:   *pBuf |=  mask;  break;
+    case BLACK:   *pBuf &= ~mask;  break;
+    case INVERSE: *pBuf ^=  mask;  break;
+    }
+  
+    // fast exit if we're done here!
+    if(h<mod) { return; }
+
+    h -= mod;
+
+    pBuf += SSD1306_LCDWIDTH;
+  }
+
+
+  // write solid bytes while we can - effectively doing 8 rows at a time
+  if(h >= 8) { 
+    if (color == INVERSE)  {          // separate copy of the code so we don't impact performance of the black/white write version with an extra comparison per loop
+      do  {
+      *pBuf=~(*pBuf);
+
+        // adjust the buffer forward 8 rows worth of data
+        pBuf += SSD1306_LCDWIDTH;
+
+        // adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
+        h -= 8;
+      } while(h >= 8);
+      }
+    else {
+      // store a local value to work with 
+      register uint8_t val = (color == WHITE) ? 255 : 0;
+
+      do  {
+        // write our value in
+      *pBuf = val;
+
+        // adjust the buffer forward 8 rows worth of data
+        pBuf += SSD1306_LCDWIDTH;
+
+        // adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
+        h -= 8;
+      } while(h >= 8);
+      }
+    }
+
+  // now do the final partial byte, if necessary
+  if(h) {
+    mod = h & 7;
+    // this time we want to mask the low bits of the byte, vs the high bits we did above
+    // register uint8_t mask = (1 << mod) - 1;
+    // note - lookup table results in a nearly 10% performance improvement in fill* functions
+    static uint8_t postmask[8] = {0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F };
+    register uint8_t mask = postmask[mod];
+    switch (color) 
+    {
+      case WHITE:   *pBuf |=  mask;  break;
+      case BLACK:   *pBuf &= ~mask;  break;
+      case INVERSE: *pBuf ^=  mask;  break;
+    }
+  }
+}

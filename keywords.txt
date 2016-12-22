@@ -1,0 +1,22 @@
+#######################################
+# Syntax Coloring Map For FrankPin
+#######################################
+wwEyes	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+select	KEYWORD2
+
+
+#######################################
+# Definition 
+#######################################
+BLACK	LITERAL1
+WHITE	LITERAL1
+INVERSE	LITERAL1
+eyeLeft	LITERAL1
+eyeRight	LITERAL1
+
+#######################################
+#######################################
