@@ -1,0 +1,389 @@
+From ce2bb843e0ef2608673612b14c8ba04fa59ddeae Mon Sep 17 00:00:00 2001
+From: Rainer Radow <woody@radow.org>
+Date: Thu, 22 Dec 2016 17:51:04 +0100
+Subject: [PATCH] New examples
+
+---
+ examples/eye_circle/eye_circle.ino                 |  55 +++++++++++
+ examples/eye_circle_scroll/eye_circle_scroll.ino   |  82 ++++++++++++++++
+ examples/eye_circle_twinkel/eye_circle_twinkel.ino | 105 +++++++++++++++++++++
+ .../eye_roundrect_invert/eye_roundrect_invert.ino  | 104 ++++++++++++++++++++
+ 4 files changed, 346 insertions(+)
+ create mode 100644 examples/eye_circle/eye_circle.ino
+ create mode 100644 examples/eye_circle_scroll/eye_circle_scroll.ino
+ create mode 100644 examples/eye_circle_twinkel/eye_circle_twinkel.ino
+ create mode 100644 examples/eye_roundrect_invert/eye_roundrect_invert.ino
+
+diff --git a/examples/eye_circle/eye_circle.ino b/examples/eye_circle/eye_circle.ino
+new file mode 100644
+index 0000000..819a58c
+--- /dev/null
++++ b/examples/eye_circle/eye_circle.ino
+@@ -0,0 +1,55 @@
++// *****************************************************************************
++//      - - - /    eye_circle.ino
++//    -( W-W )        CC Attribution 4.0 International License
++//      - - - \          www.wood-walker.org - Rainer Radow
++//                          2016 Dec 22 - version 1.0
++// *****************************************************************************
++// Draw a circle and a dot to the eyes.
++    
++#include <Wire.h>           // necessary for the I2C Communication
++#include <SPI.h>            // used for SD-card communication in the WoodyEyes.h
++#include <SD.h>             // used for SD-card communication in the WoodyEyes.h
++#include <Adafruit_GFX.h>
++#include <wwEyes.h>      // Header with instructions for using the OLED displays
++#include <wwFrankPin.h>
++    
++//====================================================== <woody_eyes.h> ============================
++wwEyes eye;       // set up variables using the WoodyEyes.h:
++    
++void setup() {
++   prepareFrank();   // general WW-settings
++   // eyes ----------------------------------------------
++   Wire.begin();     // Necessary for eyes and SD-card
++   eyeInitialize();  // must be done once at the start of each program
++   eyeDrawCircle();
++}
++    
++void loop() {
++   // put your main code here, to run repeatedly:
++       
++}
++// ============================================================================
++void eyeInitialize() {
++   delay(500);         // after a power on you have to wait a while to let the eyes start
++   eye.select(eyeRight);
++   eye.begin();
++   eye.display();      // show an empty screen
++   eye.select(eyeLeft);
++   eye.begin();
++   eye.display();      // show an empty screen
++}
++// ============================================================================
++void eyeDrawCircle() {
++   eye.clearBuffer(); // clean the splash screen buffer
++   eye.fillCircle(eye.width() / 2, eye.height() / 2, 10, WHITE);
++   for (int16_t i = 26; i < 31; i++) {
++      eye.drawCircle(eye.width() / 2, eye.height() / 2, i, WHITE);
++   }
++   eye.select(eyeRight);
++   eye.display();
++   eye.select(eyeLeft);
++   eye.display();
++}
++// ============================================================================
++// ============================================================================
++
+diff --git a/examples/eye_circle_scroll/eye_circle_scroll.ino b/examples/eye_circle_scroll/eye_circle_scroll.ino
+new file mode 100644
+index 0000000..e50cfe2
+--- /dev/null
++++ b/examples/eye_circle_scroll/eye_circle_scroll.ino
+@@ -0,0 +1,82 @@
++// *****************************************************************************
++//      - - - /    eye_circle_scroll.ino
++//    -( W-W )        CC Attribution 4.0 International License
++//      - - - \          www.wood-walker.org - Rainer Radow
++//                          2016 Dec 22 - version 1.0
++// *****************************************************************************
++// Demonstrates the use of the Wood-Walker wwEyes.h and scrolling
++
++#include <Wire.h>           // necessary for the I2C Communication
++#include <SPI.h>            // used for SD-card communication in the WoodyEyes.h
++#include <SD.h>             // used for SD-card communication in the WoodyEyes.h
++#include <Adafruit_GFX.h>
++#include <wwEyes.h>      // Header with instructions for using the OLED displays
++#include <wwFrankPin.h>
++
++//===============================================================================
++wwEyes eye;       // set up variables using the wwEyes.h:
++
++void setup() {
++   prepareFrank();   // general WW-settings
++   // eyes ----------------------------------------------
++   Wire.begin();     // Necessary for eyes and SD-card
++   eyeInitialize();  // must be done once at the start of each program
++   scrollStop();   
++   eyeDrawCircle();
++}
++// ============================================================================
++void loop() {
++  // put your main code here, to run repeatedly:
++scrollRight();
++delay(300);
++ scrollLeft();
++delay(300);
++scrollStop();
++delay(200);
++}
++// ============================================================================
++void eyeInitialize() {
++   delay(500);         // after a power on you have to wait a while to let the eyes start
++   eye.select(eyeRight);
++   eye.begin();
++   eye.display();      // show an empty screen
++   eye.select(eyeLeft);
++   eye.begin();
++   eye.display();      // show an empty screen
++}
++// ============================================================================
++void eyeDrawCircle() {
++   eye.clearBuffer(); // clean the splash screen buffer
++   eye.fillCircle(eye.width() / 2, eye.height() / 2, 8, WHITE);
++   for (int16_t i = 27; i < 30; i++) {
++      eye.drawCircle(eye.width() / 2, eye.height() / 2, i, WHITE);
++      eye.display();
++   }
++   eye.select(eyeRight);
++   eye.display();
++   eye.select(eyeLeft);
++   eye.display();
++}
++// ============================================================================
++void scrollRight() {
++   eye.select(eyeRight);
++   eye.startscrollright(0x00, 0x07);
++   eye.select(eyeLeft);
++   eye.startscrollright(0x00, 0x07);
++}
++// ============================================================================
++void scrollLeft() {
++   eye.select(eyeRight);
++   eye.startscrollleft(0x00, 0x07);
++   eye.select(eyeLeft);
++   eye.startscrollleft(0x00, 0x07);
++}
++// ============================================================================
++void scrollStop() {
++   eye.select(eyeLeft);
++   eye.stopscroll();
++   eye.select(eyeRight);
++   eye.stopscroll();
++}
++// ============================================================================
++// ============================================================================
+diff --git a/examples/eye_circle_twinkel/eye_circle_twinkel.ino b/examples/eye_circle_twinkel/eye_circle_twinkel.ino
+new file mode 100644
+index 0000000..69d7d60
+--- /dev/null
++++ b/examples/eye_circle_twinkel/eye_circle_twinkel.ino
+@@ -0,0 +1,105 @@
++// *****************************************************************************
++//      - - - /    eye_circle_twinkle.ino
++//    -( W-W )        CC Attribution 4.0 International License
++//      - - - \          www.wood-walker.org - Rainer Radow
++//                          2016 Dec 22 - version 1.0
++// *****************************************************************************
++// Draw a circle and a dot as eyes.
++// Draw a twinkel animation
++
++#include <Wire.h>           // necessary for the I2C Communication
++#include <SPI.h>            // used for SD-card communication in the WoodyEyes.h
++#include <SD.h>             // used for SD-card communication in the WoodyEyes.h
++#include <Adafruit_GFX.h>
++#include <wwEyes.h>      // Header with instructions for using the OLED displays
++#include <wwFrankPin.h>
++
++wwEyes eye;       // set up variables using the WoodyEyes.h:
++// ============================================================================
++void setup() {
++   prepareFrank();   // general WW-settings
++   // eyes ----------------------------------------------
++   Wire.begin();     // Necessary for eyes and SD-card
++   eyeInitialize();  // must be done once at the start of each program
++}
++// ============================================================================
++void loop() {
++   eyeDrawCircle();
++}
++// ============================================================================
++void eyeInitialize() {
++   delay(500);         // after a power wait a while to let the eyes start
++   eye.select(eyeRight);
++   eye.begin();
++   eye.display();      // show an empty screen
++   eye.select(eyeLeft);
++   eye.begin();
++   eye.display();      // show an empty screen
++}
++// ============================================================================
++void eyeDrawCircle() {
++   const int mitteX = 64;
++   const int mitteY = 32;
++   
++   eye.clearBuffer(); // clean the splash screen buffer
++   eye.fillCircle(mitteX, mitteY, 10, WHITE);
++   for (int16_t i = 29; i < 34; i++) {
++      eye.drawCircle(mitteX, mitteY, i, WHITE);
++   }
++   eyeOutBuffer();
++   
++   delay(1000);
++   for (int16_t i = 28; i > 10; i--) {
++      eye.drawCircle(mitteX, mitteY, i, WHITE);
++      eyeOutBuffer();
++   }
++   delay(300);
++   for (int16_t i = 14; i < 27; i += 4) {
++      eye.drawCircle(mitteX, mitteY, i, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+1, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+2, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+3, BLACK);
++      eyeOutBuffer();
++   }
++   eye.clearBuffer(); // clean the splash screen buffer
++   eye.fillCircle(mitteX, mitteY, 10, WHITE);
++   for (int16_t i = 29; i < 34; i++) {
++      eye.drawCircle(mitteX, mitteY, i, WHITE);
++   }
++   eyeOutBuffer();
++   
++   delay(1000);
++   // --------------------------------------------------------------
++   eye.select(eyeRight);
++   
++   eye.drawCircle(mitteX, mitteY, 10, BLACK);
++   eye.drawCircle(mitteX, mitteY,  9, BLACK);
++   for (int16_t i = 28; i > 10; i -=4) {
++      eye.drawCircle(mitteX, mitteY, i, WHITE);
++      eye.drawCircle(mitteX, mitteY, i-1, WHITE);
++      eye.drawCircle(mitteX, mitteY, i-2, WHITE);
++      eye.drawCircle(mitteX, mitteY, i-3, WHITE);
++      eye.display();
++   }
++   eye.drawCircle(mitteX, mitteY, 10, WHITE);
++   eye.drawCircle(mitteX, mitteY,  9, WHITE);
++   eye.display();
++   
++   delay(10);
++   for (int16_t i = 14; i < 27; i += 4) {
++      eye.drawCircle(mitteX, mitteY, i, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+1, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+2, BLACK);
++      eye.drawCircle(mitteX, mitteY, i+3, BLACK);
++      eye.display();
++   }
++}
++// ============================================================================
++void eyeOutBuffer() {
++   eye.select(eyeRight);
++   eye.display();
++   eye.select(eyeLeft);
++   eye.display();
++}
++// ============================================================================
++// ============================================================================
+diff --git a/examples/eye_roundrect_invert/eye_roundrect_invert.ino b/examples/eye_roundrect_invert/eye_roundrect_invert.ino
+new file mode 100644
+index 0000000..44b2230
+--- /dev/null
++++ b/examples/eye_roundrect_invert/eye_roundrect_invert.ino
+@@ -0,0 +1,104 @@
++// *****************************************************************************
++//      - - - /    eye_roundrect_invert.ino
++//    -( W-W )        CC Attribution 4.0 International License
++//      - - - \          www.wood-walker.org - Rainer Radow
++//                          2016 Dec 22 - version 1.0
++// *****************************************************************************
++// Draw a rounded rectangle and a dot as eyes.
++// animate and invert display
++
++#include <Wire.h>           // necessary for the I2C Communication
++#include <SPI.h>            // used for SD-card communication in the WoodyEyes.h
++#include <SD.h>             // used for SD-card communication in the WoodyEyes.h
++#include <Adafruit_GFX.h>
++#include <wwEyes.h>      // Header with instructions for using the OLED displays
++#include <wwFrankPin.h>
++
++wwEyes eye;       // set up variables using the WoodyEyes.h:
++// ============================================================================
++void setup() {
++   prepareFrank();   // general WW-settings
++   // eyes ----------------------------------------------
++   Wire.begin();     // Necessary for eyes and SD-card
++   eyeInitialize();  // must be done once at the start of each program
++}
++// ============================================================================
++void loop() {
++   eyeDrawCircle();
++}
++// ============================================================================
++void eyeInitialize() {
++   delay(500);         // after a power wait a while to let the eyes start
++   eye.select(eyeRight);
++   eye.begin();
++   eye.display();      // show an empty screen
++   eye.select(eyeLeft);
++   eye.begin();
++   eye.display();      // show an empty screen
++}
++// ============================================================================
++void eyeDrawCircle() {
++   const int mitteX = 64;
++   const int mitteY = 32;
++   const int pupil = 8;
++   const int apple = 22; 
++   
++   eye.clearBuffer(); // clean the splash screen buffer
++   eye.fillCircle(mitteX, mitteY, apple, WHITE);
++   eye.fillCircle(mitteX, mitteY, pupil, BLACK);
++   for (int16_t i = 0; i < 3; i++) {
++      eye.drawRoundRect(25+i, 0+i, 78-2*i, 64-2*i, 38-i, WHITE);
++   }
++   eyeOutBuffer(); 
++   delay(1000);
++   eye.fillCircle(mitteX, mitteY, apple, BLACK);  //Erase the eye ball
++   eye.fillCircle(mitteX+8, mitteY+0, apple, WHITE);   
++   eye.fillCircle(mitteX+12, mitteY+0, pupil, BLACK);  
++   eyeOutBuffer();    
++    delay(1000);  
++   eye.fillCircle(mitteX+8, mitteY+0, apple, BLACK);  //Erase the eye ball
++   eye.fillCircle(mitteX-8, mitteY-0, apple, WHITE);
++   eye.fillCircle(mitteX-12, mitteY-0, pupil, BLACK);
++   eyeOutBuffer();  
++   delay(1000); 
++    
++   eyesInvert();
++   delay(100); 
++   eyesNormal(); 
++   delay(200); 
++   eyesInvert();
++   delay(100);
++   eyesNormal();
++   delay(200);
++   eyesInvert();
++   delay(100);
++   eyesNormal();
++   delay(200);   
++}
++// ============================================================================
++void eyeOutBuffer() {
++   eye.select(eyeRight);
++   eye.display();
++   eye.select(eyeLeft);
++   eye.display();
++}
++// ============================================================================
++void eyesInvert() {
++   eye.select(eyeRight);
++   eye.command(EYE_INVERTDISPLAY);   
++   eye.display();
++   eye.select(eyeLeft);
++   eye.command(EYE_INVERTDISPLAY);   
++   eye.display();
++}
++// ============================================================================
++void eyesNormal() {
++   eye.select(eyeRight);
++   eye.command(EYE_NORMALDISPLAY);
++   eye.display();
++   eye.select(eyeLeft);
++   eye.command(EYE_NORMALDISPLAY);
++   eye.display();
++}
++// ============================================================================
++// ============================================================================
+-- 
+2.10.2.windows.1
+
