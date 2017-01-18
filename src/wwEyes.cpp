@@ -96,6 +96,9 @@ static uint8_t buffer[SSD1306_LCDHEIGHT * SSD1306_LCDWIDTH / 8] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+
+#define ssd1306_swap(a, b) { int16_t t = a; a = b; b = t; }
+
 // the most basic function, set a single pixel
 void wwEyes::drawPixel(int16_t x, int16_t y, uint16_t color) {
   if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
@@ -104,7 +107,7 @@ void wwEyes::drawPixel(int16_t x, int16_t y, uint16_t color) {
   // check rotation, move pixel around if necessary
   switch (getRotation()) {
   case 1:
-    swap(x, y);
+    ssd1306_swap(x, y);
     x = WIDTH - x - 1;
     break;
   case 2:
@@ -112,7 +115,7 @@ void wwEyes::drawPixel(int16_t x, int16_t y, uint16_t color) {
     y = HEIGHT - y - 1;
     break;
   case 3:
-    swap(x, y);
+    ssd1306_swap(x, y);
     y = HEIGHT - y - 1;
     break;
   }  
@@ -396,7 +399,7 @@ void wwEyes::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     case 1:
       // 90 degree rotation, swap x & y for rotation, then invert x
       bSwap = true;
-      swap(x, y);
+      ssd1306_swap(x, y);
       x = WIDTH - x - 1;
       break;
     case 2:
@@ -408,7 +411,7 @@ void wwEyes::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     case 3:
       // 270 degree rotation, swap x & y for rotation, then invert y  and adjust y for w (not to become h)
       bSwap = true;
-      swap(x, y);
+      ssd1306_swap(x, y);
       y = HEIGHT - y - 1;
       y -= (w-1);
       break;
@@ -464,7 +467,7 @@ void wwEyes::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     case 1:
       // 90 degree rotation, swap x & y for rotation, then invert x and adjust x for h (now to become w)
       bSwap = true;
-      swap(x, y);
+      ssd1306_swap(x, y);
       x = WIDTH - x - 1;
       x -= (h-1);
       break;
@@ -477,7 +480,7 @@ void wwEyes::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     case 3:
       // 270 degree rotation, swap x & y for rotation, then invert y 
       bSwap = true;
-      swap(x, y);
+      ssd1306_swap(x, y);
       y = HEIGHT - y - 1;
       break;
   }
